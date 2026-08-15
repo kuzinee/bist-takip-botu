@@ -139,12 +139,13 @@ def check_kap_news():
         if response.status_code == 200:
             disclosures = response.json()
             for item in disclosures[:30]:
-                title = item.get("title", "")
-                summary = item.get("summary", "")
+                title = str(item.get("title") or "")
+                summary = str(item.get("summary") or "")
                 stock_code = item.get("stockCodes", "BIST")
                 disclosure_id = item.get("disclosureIndex", "")
 
-                if any(kw.lower() in title.lower() or kw.lower() in summary.lower() for kw.lower() in [k.lower() for k in positive_keywords]):
+                text_to_check = (title + " " + summary).lower()
+                if any(kw.lower() in text_to_check for kw in positive_keywords):
                     link = f"https://www.kap.org.tr/tr/Bildirim/{disclosure_id}"
                     clean_summary = summary.replace("\n", " ")[:120]
                     kap_matches.append(
