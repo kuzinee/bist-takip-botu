@@ -8,6 +8,10 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
 def send_telegram_message(message):
+    if not TELEGRAM_TOKEN or not CHAT_ID:
+        print("HATA: TELEGRAM_TOKEN veya CHAT_ID tanımlı değil!")
+        return
+
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
@@ -15,27 +19,45 @@ def send_telegram_message(message):
         "parse_mode": "Markdown"
     }
     try:
-        requests.post(url, data=payload)
+        response = requests.post(url, data=payload, timeout=10)
+        if response.status_code == 200:
+            print("Telegram bildirimi başarıyla gönderildi.")
+        else:
+            print(f"Telegram Hatası ({response.status_code}): {response.text}")
     except Exception as e:
-        print(f"Mesaj gönderilemedi: {e}")
+        print(f"Telegram bağlantı hatası: {e}")
 
 def get_all_bist_tickers():
+    print("İş Yatırım üzerinden hisse listesi çekiliyor...")
     url = "https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    tickers = []
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, "html.parser")
         select_box = soup.find("select", {"id": "ddlHisseTek"})
-        tickers = []
         if select_box:
             for option in select_box.find_all("option"):
                 code = option.get("value")
                 if code and code.strip():
                     tickers.append(f"{code.strip()}.IS")
-        return tickers
     except Exception as e:
-        print(f"Hisse listesi çekilemedi: {e}")
-        return []
+        print(f"İş Yatırım bağlantı hatası: {e}")
+
+    # İş Yatırım engellenirse yedek BIST 100/Likit listesi
+    if not tickers:
+        print("İş Yatırım'dan liste çekilemedi. Yedek hisse listesi devreye alınıyor...")
+        tickers = [
+            "THYAO.IS", "GARAN.IS", "ASELS.IS", "EREGL.IS", "SISE.IS", 
+            "AKBNK.IS", "KCHOL.IS", "TUPRS.IS", "BIMAS.IS", "SAHOL.IS",
+            "EKGYO.IS", "PGSUS.IS", "YKBNK.IS", "ISCTR.IS", "HEKTS.IS",
+            "KORDS.IS", "SASA.IS", "PETKM.IS", "ASTOR.IS", "KONTR.IS"
+        ]
+
+    print(f"Toplam {len(tickers)} adet hisse taranacak.")
+    return tickers
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -51,12 +73,16 @@ def calculate_rsi(series, period=14):
 
 def check_bist_stocks():
     bist_tickers = get_all_bist_tickers()
-    if not bist_tickers:
+    
+    print("Fiyat verileri indiriliyor...")
+    data = yf.download(bist_tickers, period="1y", threads=True, progress=False)
+    
+    if data.empty or "Close" not in data:
+        print("HATA: Fiyat verisi alınamadı.")
+        send_telegram_message("⚠️ Fiyat verileri çekilemedi.")
         return
 
-    data = yf.download(bist_tickers, period="1y", threads=True, progress=False)
     df = data["Close"]
-
     matched_stocks = []
 
     for ticker in df.columns:
@@ -76,6 +102,8 @@ def check_bist_stocks():
             matched_stocks.append(
                 f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} (Fiyat: {last_price:.2f} TL)"
             )
+
+    print(f"Kriterlere uyan hisse sayısı: {len(matched_stocks)}")
 
     if matched_stocks:
         message = (
