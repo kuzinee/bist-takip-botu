@@ -16,17 +16,18 @@ def send_telegram_message(message):
     payload = {
         "chat_id": CHAT_ID,
         "text": message,
-        "parse_mode": "Markdown"
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": True
     }
     try:
         requests.post(url, data=payload, timeout=10)
-        print("Telegram bildirimi gönderildi.")
+        print("Telegram bildirimi başarıyla gönderildi.")
     except Exception as e:
         print(f"Telegram hatası: {e}")
 
 def get_all_bist_tickers():
     url = "https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     tickers = []
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -63,7 +64,7 @@ def check_bist_stocks():
     
     if data.empty:
         print("Veri indirilemedi.")
-        return
+        return []
 
     drawdown_matches = []
     reversal_matches = []
@@ -115,19 +116,56 @@ def check_bist_stocks():
         except Exception:
             continue
 
-    # Raporlama
     message_parts = []
     if drawdown_matches:
         message_parts.append("🎯 *Zirveden Ucuzlayan + RSI Dip Yapanlar:*\n" + "\n".join(drawdown_matches))
     if reversal_matches:
         message_parts.append("⚡ *Gün İçi Dipten Dönüş Yapanlar:*\n" + "\n".join(reversal_matches))
 
-    if not message_parts:
-        final_message = "ℹ️ Bugün hiçbir kriterimize (Zirve Düşüşü veya Gün İçi Dönüş) uyan hisse bulunamadı."
-    else:
-        final_message = "\n\n---\n\n".join(message_parts)
+    return message_parts
 
-    send_telegram_message(final_message)
+def check_kap_news():
+    """3. STRATEJİ: KAP Haber Taraması"""
+    url = "https://www.kap.org.tr/tr/api/disclosures"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    positive_keywords = [
+        "Yeni İş İlişkisi", "İhale", "Yatırım", 
+        "Pay Alım Satım", "Sermaye Artırımı", "Geri Alım"
+    ]
+    kap_matches = []
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            disclosures = response.json()
+            for item in disclosures[:30]:
+                title = item.get("title", "")
+                summary = item.get("summary", "")
+                stock_code = item.get("stockCodes", "BIST")
+                disclosure_id = item.get("disclosureIndex", "")
+
+                if any(kw.lower() in title.lower() or kw.lower() in summary.lower() for kw.lower() in [k.lower() for k in positive_keywords]):
+                    link = f"https://www.kap.org.tr/tr/Bildirim/{disclosure_id}"
+                    clean_summary = summary.replace("\n", " ")[:120]
+                    kap_matches.append(
+                        f"📢 *[{stock_code}] {title}*\n{clean_summary}...\n🔗 [KAP Haberi]({link})"
+                    )
+    except Exception as e:
+        print(f"KAP tarama hatası: {e}")
+
+    if kap_matches:
+        return ["🚨 *Önemli KAP Bildirimleri & Anlaşmalar:*\n" + "\n\n".join(kap_matches)]
+    return []
 
 if __name__ == "__main__":
-    check_bist_stocks()
+    technical_results = check_bist_stocks()
+    kap_results = check_kap_news()
+
+    all_results = technical_results + kap_results
+
+    if all_results:
+        final_message = "\n\n---\n\n".join(all_results)
+    else:
+        final_message = "ℹ️ Bu taramada kriterlere uyan teknik hisse sinyali veya kritik KAP haberi bulunamadı."
+
+    send_telegram_message(final_message)
