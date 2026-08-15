@@ -44,8 +44,8 @@ def get_all_bist_tickers():
     if not tickers:
         tickers = [
             "THYAO.IS", "GARAN.IS", "ASELS.IS", "EREGL.IS", "SISE.IS", 
-            "AKBNK.IS", "KCHOL.IS", "TUPRS.IS", "BIMAS.IS", "SAHOL.IS",
-            "EKGYO.IS", "PGSUS.IS", "YKBNK.IS", "ISCTR.IS", "HEKTS.IS"
+            "AKBNK.IS", "KCHOL.IS", "TUPRS.IS", "KUVVA.IS", "SAHOL.IS",
+            "EKGYO.IS", "GENIL.IS", "YKBNK.IS", "ISCTR.IS", "ARDYZ.IS"
         ]
     return tickers
 
