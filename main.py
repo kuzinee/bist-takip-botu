@@ -44,27 +44,29 @@ def check_special_watchlist():
     print("Özel takip listesindeki hisselerin 15 dakikalık fiyatları çekiliyor...")
     matches = []
     
-    # Her hisse için bireysel veri çekerek veri kaçırma sorununu engelleme
     for ticker in SPECIAL_WATCHLIST:
         try:
             symbol = ticker.replace(".IS", "")
             stock = yf.Ticker(ticker)
             
-            # 15 dakikalık son verileri alma
+            # 15 dakikalık verileri çekip zamana göre sıralıyoruz
             df_stock = stock.history(period="2d", interval="15m")
+            if not df_stock.empty:
+                df_stock = df_stock.sort_index() # Zaman sıralamasını garantiye alıyoruz
             
             if len(df_stock) < 2:
-                # 15 dakikalık veri alınamazsa alternatif günlük/anlık veri çekme
                 df_stock = stock.history(period="5d", interval="1m")
+                if not df_stock.empty:
+                    df_stock = df_stock.sort_index()
 
             if df_stock.empty or len(df_stock) < 2:
                 print(f"Uyarı: {ticker} için yeterli veri alınamadı.")
                 continue
 
-            last_price = df_stock["Close"].iloc[-1]
-            prev_price = df_stock["Close"].iloc[-2]
+            last_price = float(df_stock["Close"].iloc[-1])
+            prev_price = float(df_stock["Close"].iloc[-2])
 
-            # Fiyat Değişim Yönü ve Ok İkonları
+            # Fiyat Değişim Yönü Mantığı
             if last_price > prev_price:
                 trend_icon = "🟢 🔼"
             elif last_price < prev_price:
