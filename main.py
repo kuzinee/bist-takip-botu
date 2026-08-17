@@ -199,8 +199,10 @@ if __name__ == "__main__":
 
     all_results = technical_results + kap_results
 
+    # Kriter eşleşmesi olsa da olmasa da her tetiklemede Telegram'a mesaj gönderilir
     if all_results:
         final_message = "🔔 *Saatlik BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
-        send_telegram_message(final_message)
     else:
-        print("Kriterlere uyan hisse veya KAP haberi bulunamadı. Telegram'a mesaj atılmadı.")
+        final_message = "ℹ️ *BIST & KAP Taraması Tamamlandı*\nBu taramada belirlenen kriterlere uyan teknik hisse sinyali veya önemli KAP haberi bulunamadı."
+
+    send_telegram_message(final_message)
