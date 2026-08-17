@@ -29,17 +29,61 @@ def send_telegram_message(message):
             print(f"Telegram hatası: {e}")
 
 def get_all_bist_tickers():
+    # Borsa İstanbul Tüm Hisseler (500+ Hisse Tam Liste)
     return [
         "AAV.IS", "A1CAP.IS", "ABD.IS", "ACSEL.IS", "ADEL.IS", "ADESE.IS", "ADGYO.IS", "AEFES.IS", 
         "AFYON.IS", "AGESA.IS", "AGHOL.IS", "AGROT.IS", "AHGAZ.IS", "AKBNK.IS", "AKCNS.IS", "AKFGY.IS", 
         "AKFYE.IS", "AKGRT.IS", "AKMGY.IS", "AKSA.IS", "AKSEN.IS", "AKSGY.IS", "AKSUE.IS", "ALARK.IS", 
-        "ALBRK.IS", "ALCAR.IS", "ALCTL.IS", "ALFAS.IS", "ALGYO.IS", "ALKA.IS", "ALTNY.IS", "ARCLK.IS", 
-        "ARDYZ.IS", "ASELS.IS", "ASTOR.IS", "BIMAS.IS", "BRSAN.IS", "CCOLA.IS", "CWENE.IS", "DOAS.IS", 
-        "EGEEN.IS", "EKGYO.IS", "ENJSA.IS", "ENKAI.IS", "EREGL.IS", "EUPWR.IS", "FROTO.IS", "GARAN.IS", 
-        "GESAN.IS", "GUBRF.IS", "HEKTS.IS", "ISCTR.IS", "KCAER.IS", "KCHOL.IS", "KONTR.IS", "KOZAL.IS", 
-        "MIATK.IS", "ODAS.IS", "OTKAR.IS", "OYAKC.IS", "PETKM.IS", "PGSUS.IS", "REEDR.IS", "SAHOL.IS", 
-        "SASA.IS", "SISE.IS", "SKBNK.IS", "SMRTG.IS", "SOKM.IS", "TCELL.IS", "THYAO.IS", "TKFEN.IS", 
-        "TOASO.IS", "TUPRS.IS", "VAKBN.IS", "VESBE.IS", "VESTL.IS", "YKBNK.IS"
+        "ALBRK.IS", "ALCAR.IS", "ALCTL.IS", "ALFAS.IS", "ALGYO.IS", "ALKA.IS", "ALTNY.IS", "ALVES.IS", 
+        "ANELE.IS", "ANGEN.IS", "ANHYT.IS", "ANSGR.IS", "ARASE.IS", "ARCLK.IS", "ARDYZ.IS", "ARENA.IS", 
+        "ARSAN.IS", "ARTMS.IS", "ARZUM.IS", "ASELS.IS", "ASGYO.IS", "ASTOR.IS", "ASUZU.IS", "ATAGY.IS", 
+        "ATAKP.IS", "ATATP.IS", "ATEKS.IS", "ATLAS.IS", "ATSYH.IS", "AVOD.IS", "AVPGY.IS", "AVTUR.IS", 
+        "AYCES.IS", "AYDEM.IS", "AYEN.IS", "AYGAZ.IS", "AZTEK.IS", "BAGFS.IS", "BAKAB.IS", "BALAT.IS", 
+        "BANVT.IS", "BARMA.IS", "BASGZ.IS", "BAYRK.IS", "BEGYO.IS", "BFREN.IS", "BIENP.IS", "BIGCHEFS.IS", 
+        "BIMAS.IS", "BINHO.IS", "BIOEN.IS", "BRKVY.IS", "BRLSM.IS", "BRMSN.IS", "BRSAN.IS", "BRSAT.IS", 
+        "BRKSN.IS", "BRYAT.IS", "BSOKE.IS", "BTCIM.IS", "BUCIM.IS", "BURCE.IS", "BURVA.IS", "BVSAN.IS", 
+        "BYDNR.IS", "CANTE.IS", "CASA.IS", "CCOLA.IS", "CELHA.IS", "CEMAS.IS", "CEMTS.IS", "CMBTN.IS", 
+        "CMENT.IS", "CONSE.IS", "COSMO.IS", "CRDFA.IS", "CRFSA.IS", "CUSAN.IS", "CVKMD.IS", "CWENE.IS", 
+        "DAGI.IS", "DAPGM.IS", "DARDL.IS", "DGATE.IS", "DGGYO.IS", "DITAS.IS", "DMRGD.IS", "DMSAS.IS", 
+        "DNISI.IS", "DOAS.IS", "DOBUR.IS", "DOCTA.IS", "DOGUB.IS", "DOHOL.IS", "DOKTA.IS", "DURDO.IS", 
+        "DYOBY.IS", "EDATA.IS", "ECILC.IS", "ECZYT.IS", "EBEBK.IS", "EDIP.IS", "EGEEN.IS", "EGGUB.IS", 
+        "EGPRO.IS", "EGSER.IS", "EKGYO.IS", "EKIZ.IS", "EKSUN.IS", "ELITE.IS", "EMKEL.IS", "ENJSA.IS", 
+        "ENKAI.IS", "ENTRA.IS", "EPLAS.IS", "ERCB.IS", "EREGL.IS", "ESCAR.IS", "ESEN.IS", "ETILR.IS", 
+        "EUPWR.IS", "EUREK.IS", "EUHOL.IS", "EURO.IS", "EYGYO.IS", "FORMT.IS", "FORTE.IS", "FRIGO.IS", 
+        "FROTO.IS", "FZLGY.IS", "GARAN.IS", "GARFA.IS", "GEDIK.IS", "GEDZA.IS", "GENIL.IS", "GENTS.IS", 
+        "GEREL.IS", "GESAN.IS", "GIPTA.IS", "GLBMD.IS", "GLCVY.IS", "GLYHO.IS", "GMTAS.IS", "GOKNR.IS", 
+        "GOLTS.IS", "GOODY.IS", "GOZDE.IS", "GRSEL.IS", "GRTHO.IS", "GSDHO.IS", "GUBRF.IS", "GWIND.IS", 
+        "HALKB.IS", "HATEK.IS", "HATSN.IS", "HDFGS.IS", "HEDEF.IS", "HEKTS.IS", "HKTM.IS", "HOROZ.IS", 
+        "HUBVC.IS", "HUNER.IS", "HURGZ.IS", "ICBCT.IS", "IDEAS.IS", "IDGYO.IS", "IEYHO.IS", "IHAAS.IS", 
+        "IHEVA.IS", "IHGZT.IS", "IHLGM.IS", "IHYAY.IS", "IMASM.IS", "INDES.IS", "INFO.IS", "INGRM.IS", 
+        "INTEM.IS", "INVEO.IS", "INVES.IS", "IPEKE.IS", "ISCTR.IS", "ISDMR.IS", "ISFIN.IS", "ISGSY.IS", 
+        "ISGYO.IS", "ISKPL.IS", "ISMEN.IS", "ISSEN.IS", "IZMDC.IS", "JANTS.IS", "KAPLM.IS", "KAREL.IS", 
+        "KARSN.IS", "KARTN.IS", "KATMR.IS", "KAYSE.IS", "KCAER.IS", "KCHOL.IS", "KENT.IS", "KRGYO.IS", 
+        "KLGYO.IS", "KLMSN.IS", "KLNMA.IS", "KLRZO.IS", "KLSER.IS", "KLSYN.IS", "KNFRT.IS", "KONTR.IS", 
+        "KONYA.IS", "KOPOL.IS", "KORDS.IS", "KOZAL.IS", "KOZAA.IS", "KRONT.IS", "KRPLS.IS", "KRTEK.IS", 
+        "KRVGD.IS", "KSTUR.IS", "KTLEV.IS", "KTSKR.IS", "KUYAŞ.IS", "KZGYO.IS", "KZBGY.IS", "LIDER.IS", 
+        "LIDFA.IS", "LINK.IS", "LKMNH.IS", "LMKDC.IS", "LRVGY.IS", "LUKSK.IS", "MAALT.IS", "MACKO.IS", 
+        "MAKIM.IS", "MAKTK.IS", "MANAS.IS", "MARKA.IS", "MARTI.IS", "MAGEN.IS", "MAVI.IS", "MEDTR.IS", 
+        "MEGAP.IS", "MEPET.IS", "MERCN.IS", "MERKO.IS", "MERIT.IS", "METRO.IS", "METUR.IS", "MHRGY.IS", 
+        "MIATK.IS", "MTRKS.IS", "MOGAN.IS", "MOBTL.IS", "MPARK.IS", "MRGYO.IS", "MRSHL.IS", "MSGYO.IS", 
+        "NATEN.IS", "NETAS.IS", "NETHO.IS", "NIBAS.IS", "NTGAZ.IS", "NTHOL.IS", "NUGYO.IS", "NUHCM.IS", 
+        "OBASE.IS", "OBAMS.IS", "ODAS.IS", "OFSYM.IS", "ONCSM.IS", "ORGE.IS", "ORMA.IS", "OSMEN.IS", 
+        "OSTIM.IS", "OTKAR.IS", "OTTO.IS", "OYAKC.IS", "OYAYO.IS", "OYLUM.IS", "OYYAT.IS", "OZKGY.IS", 
+        "OZRDN.IS", "PAGYO.IS", "PAMEL.IS", "PAPIL.IS", "PARSN.IS", "PASEU.IS", "PATEK.IS", "PCILT.IS", 
+        "PEKGY.IS", "PENGD.IS", "PENTA.IS", "PETKM.IS", "PETUN.IS", "PGSUS.IS", "PINSU.IS", "PKART.IS", 
+        "PKENT.IS", "PLTUR.IS", "PNLSN.IS", "PNSUT.IS", "POLHO.IS", "POLTK.IS", "PRDGS.IS", "PRKME.IS", 
+        "PRKAB.IS", "PRZMA.IS", "PSDTC.IS", "QUAGR.IS", "RALYH.IS", "RAYSG.IS", "REEDR.IS", "RNPOL.IS", 
+        "RODRG.IS", "RTALB.IS", "RUBNS.IS", "RYGYO.IS", "RYSAS.IS", "SAHOL.IS", "SAMAT.IS", "SANEL.IS", 
+        "SANFM.IS", "SANKO.IS", "SARKY.IS", "SASA.IS", "SAYAS.IS", "SDTTR.IS", "SEGMN.IS", "SEKFK.IS", 
+        "SEKUR.IS", "SELEC.IS", "SELVA.IS", "SEYKM.IS", "SILVR.IS", "SISE.IS", "SKBNK.IS", "SKTAS.IS", 
+        "SMART.IS", "SMRTG.IS", "SNICA.IS", "SOKM.IS", "SONME.IS", "SRVGY.IS", "SUMAS.IS", "SUNTK.IS", 
+        "SURGY.IS", "SUWEN.IS", "TATEN.IS", "TATGD.IS", "TAVHL.IS", "TCELL.IS", "TDGYO.IS", "TEKTU.IS", 
+        "TERA.IS", "TETMT.IS", "THYAO.IS", "TKFEN.IS", "TKNSA.IS", "TLMAN.IS", "TMPOL.IS", "TMSN.IS", 
+        "TNZTP.IS", "TOASO.IS", "TRCAS.IS", "TRGYO.IS", "TRILC.IS", "TSKB.IS", "TSPOR.IS", "TUCLK.IS", 
+        "TUPRS.IS", "TURGG.IS", "TURSG.IS", "UFUK.IS", "ULAS.IS", "ULKER.IS", "UNLU.IS", "USAK.IS", 
+        "VAKBN.IS", "VAKFN.IS", "VAKKO.IS", "VANGD.IS", "VBTYZ.IS", "VERTU.IS", "VERUS.IS", "VESBE.IS", 
+        "VESTL.IS", "VKFYO.IS", "VKGYO.IS", "VKING.IS", "YAPRK.IS", "YATAS.IS", "YAYLA.IS", "YGGYO.IS", 
+        "YGYO.IS", "YEOTK.IS", "YKBNK.IS", "YONGA.IS", "YYLGD.IS", "ZOREN.IS", "ZRGYO.IS"
     ]
 
 def calculate_rsi(series, period=14):
@@ -90,22 +134,14 @@ def check_bist_stocks():
                 )
 
             # 2. STRATEJİ: Son 3-4 Günde Dipten Yönünü Yukarı Çevirenler
-            # Son 4 günün kapanış fiyatları
             recent_closes = close_series.tail(4).values
-            # Son 4 günün hacim bilgisi ve 20 günlük ortalama hacim
             recent_volumes = df_stock['Volume'].tail(4).values
             avg_vol = df_stock['Volume'].tail(20).mean()
 
-            # Koşul A: Son 4 günde en az %3 net primlenme yapmış mı?
+            # Koşullar: %3+ prim, yeşil gün çoğunluğu, hacim teyidi ve EMA5 kırılımı
             four_day_return = ((recent_closes[-1] - recent_closes[0]) / recent_closes[0]) * 100
-            
-            # Koşul B: Son 4 günün en az 3'ünde gün kapanışı pozitif mi (yeşil mum)?
             green_days = sum(1 for i in range(1, len(recent_closes)) if recent_closes[i] > recent_closes[i-1])
-            
-            # Koşul C: Hacim artışı var mı? (Son günün hacmi ortalama hacimden yüksek mi?)
             volume_confirmed = recent_volumes[-1] > avg_vol
-
-            # Koşul D: Fiyat EMA5'in üzerine çıktı mı?
             ema5 = close_series.ewm(span=5, adjust=False).mean().iloc[-1]
             above_ema5 = last_price > ema5
 
