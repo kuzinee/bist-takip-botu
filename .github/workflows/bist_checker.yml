@@ -2,11 +2,9 @@ name: BIST & KAP Saatlik Tarama Botu
 
 on:
   schedule:
-    # Borsa İstanbul çalışma saatleri için (TSİ 09:00 - 18:00 arası her saat başı)
-    # UTC Saatleri: 06:00, 07:00, 08:00, 09:00, 10:00, 11:00, 12:00, 13:00, 14:00, 15:00
+    # TSİ 09:00 - 18:00 arası her saat başı (Hafta içi)
     - cron: '0 6-15 * * 1-5'
   
-  # İstediğiniz zaman manuel de tetikleyebilirsiniz
   workflow_dispatch:
 
 jobs:
@@ -15,10 +13,10 @@ jobs:
 
     steps:
       - name: Repoyu Kopyala
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Python Kurulumu
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
