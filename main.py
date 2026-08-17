@@ -9,7 +9,6 @@ import pandas as pd
 # ==============================================================================
 SPECIAL_WATCHLIST = [
     "MIATK.IS","ARDYZ.IS","GENIL.IS","KUVVA.IS","EGGUB.IS",
-
 ]
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
