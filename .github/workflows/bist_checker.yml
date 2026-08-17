@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-run-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Repoyu Kopyala
