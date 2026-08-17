@@ -8,8 +8,8 @@ import pandas as pd
 # Hisse kodlarının sonuna ".IS" ekleyerek yazabilirsiniz.
 # ==============================================================================
 SPECIAL_WATCHLIST = [
-    "MIATK.IS",
-    "ARDYZ.IS"
+    "MIATK.IS","ARDYZ.IS","GENIL.IS","KUVVA.IS","EGGUB.IS",
+
 ]
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
