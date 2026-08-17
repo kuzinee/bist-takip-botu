@@ -3,6 +3,15 @@ import requests
 import yfinance as yf
 import pandas as pd
 
+# ==============================================================================
+# 📌 ÖZEL TAKİP LİSTENİZ (HER TARAMADA EN ÜSTTE ANLIK FİYATI BİLDİRİLECEK HİSSELER)
+# Hisse kodlarının sonuna ".IS" ekleyerek yazabilirsiniz.
+# ==============================================================================
+SPECIAL_WATCHLIST = [
+    "MIATK.IS",
+    "ARDYZ.IS"
+]
+
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
@@ -27,6 +36,51 @@ def send_telegram_message(message):
             print("Telegram bildirimi gönderildi.")
         except Exception as e:
             print(f"Telegram hatası: {e}")
+
+def check_special_watchlist():
+    if not SPECIAL_WATCHLIST:
+        return []
+    
+    print("Özel takip listesindeki hisselerin fiyatları çekiliyor...")
+    matches = []
+    
+    try:
+        data = yf.download(SPECIAL_WATCHLIST, period="5d", interval="1m", group_by='ticker', threads=True, progress=False)
+        
+        for ticker in SPECIAL_WATCHLIST:
+            try:
+                symbol = ticker.replace(".IS", "")
+                
+                if len(SPECIAL_WATCHLIST) == 1:
+                    df_stock = data.dropna()
+                else:
+                    if ticker not in data or data[ticker].empty:
+                        continue
+                    df_stock = data[ticker].dropna()
+
+                if df_stock.empty:
+                    continue
+
+                last_price = df_stock["Close"].iloc[-1]
+                
+                daily_data = yf.Ticker(ticker).history(period="2d")
+                if len(daily_data) >= 2:
+                    prev_close = daily_data["Close"].iloc[-2]
+                    change_pct = ((last_price - prev_close) / prev_close) * 100
+                    change_str = f" (%{change_pct:+.2f})"
+                else:
+                    change_str = ""
+
+                matches.append(f"• *{symbol}*: {last_price:.2f} TL{change_str}")
+            except Exception as e:
+                print(f"{ticker} fiyatı çekilemedi: {e}")
+                continue
+    except Exception as e:
+        print(f"Özel liste veri çekme hatası: {e}")
+
+    if matches:
+        return ["📌 *Özel Takip Listesi Anlık Durum:*\n" + "\n".join(matches)]
+    return []
 
 def get_all_bist_tickers():
     # Borsa İstanbul Tüm Hisseler (500+ Hisse Tam Liste)
@@ -98,7 +152,7 @@ def calculate_rsi(series, period=14):
 def check_bist_stocks():
     bist_tickers = get_all_bist_tickers()
     print(f"Toplam {len(bist_tickers)} hisse taranıyor...")
-    
+
     try:
         data = yf.download(bist_tickers, period="6m", interval="1d", group_by='ticker', threads=True, progress=False)
     except Exception as e:
@@ -112,7 +166,7 @@ def check_bist_stocks():
         try:
             if ticker not in data or data[ticker].empty:
                 continue
-                
+
             df_stock = data[ticker].dropna()
             if len(df_stock) < 30:
                 continue
@@ -121,7 +175,7 @@ def check_bist_stocks():
             last_price = close_series.iloc[-1]
             peak_price = close_series.max()
             drawdown = ((last_price - peak_price) / peak_price) * 100
-            
+
             rsi_series = calculate_rsi(close_series)
             last_rsi = rsi_series.iloc[-1]
 
@@ -194,12 +248,12 @@ def check_kap_news():
     return []
 
 if __name__ == "__main__":
+    special_results = check_special_watchlist()
     technical_results = check_bist_stocks()
     kap_results = check_kap_news()
 
-    all_results = technical_results + kap_results
+    all_results = special_results + technical_results + kap_results
 
-    # Kriter eşleşmesi olsa da olmasa da her tetiklemede Telegram'a mesaj gönderilir
     if all_results:
         final_message = "🔔 *Saatlik BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
     else:
