@@ -4,11 +4,12 @@ import yfinance as yf
 import pandas as pd
 
 # ==============================================================================
-# 📌 ÖZEL TAKİP LİSTENİZ (HER TARAMADA EN ÜSTTE ANLIK FİYATI BİLDİRİLECEK HİSSELER)
+# 📌 ÖZEL TAKİP LİSTENİZ (15 DAKİKADA BİR ANLIK FİYATI VE YÖNÜ BİLDİRİLECEK HİSSELER)
 # Hisse kodlarının sonuna ".IS" ekleyerek yazabilirsiniz.
 # ==============================================================================
 SPECIAL_WATCHLIST = [
-    "MIATK.IS","ARDYZ.IS","GENIL.IS","KUVVA.IS","EGGUB.IS",
+    "MIATK.IS",
+    "ARDYZ.IS"
 ]
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -40,11 +41,12 @@ def check_special_watchlist():
     if not SPECIAL_WATCHLIST:
         return []
     
-    print("Özel takip listesindeki hisselerin fiyatları çekiliyor...")
+    print("Özel takip listesindeki hisselerin 15 dakikalık fiyatları çekiliyor...")
     matches = []
     
     try:
-        data = yf.download(SPECIAL_WATCHLIST, period="5d", interval="1m", group_by='ticker', threads=True, progress=False)
+        # 15 dakikalık (15m) veriler çekiliyor
+        data = yf.download(SPECIAL_WATCHLIST, period="2d", interval="15m", group_by='ticker', threads=True, progress=False)
         
         for ticker in SPECIAL_WATCHLIST:
             try:
@@ -57,11 +59,21 @@ def check_special_watchlist():
                         continue
                     df_stock = data[ticker].dropna()
 
-                if df_stock.empty:
+                if len(df_stock) < 2:
                     continue
 
                 last_price = df_stock["Close"].iloc[-1]
-                
+                prev_15m_price = df_stock["Close"].iloc[-2] # Bir önceki 15 dakikalık kapanış
+
+                # Fiyat Değişim Yönü ve Ok İkonları
+                if last_price > prev_15m_price:
+                    trend_icon = "🟢 🔼"
+                elif last_price < prev_15m_price:
+                    trend_icon = "🔴 🔽"
+                else:
+                    trend_icon = "⚪ ➖"
+
+                # Günlük Kapanışa Göre Yüzde Değişimi
                 daily_data = yf.Ticker(ticker).history(period="2d")
                 if len(daily_data) >= 2:
                     prev_close = daily_data["Close"].iloc[-2]
@@ -70,7 +82,7 @@ def check_special_watchlist():
                 else:
                     change_str = ""
 
-                matches.append(f"• *{symbol}*: {last_price:.2f} TL{change_str}")
+                matches.append(f"• *{symbol}* {trend_icon}: {last_price:.2f} TL{change_str}")
             except Exception as e:
                 print(f"{ticker} fiyatı çekilemedi: {e}")
                 continue
@@ -78,7 +90,7 @@ def check_special_watchlist():
         print(f"Özel liste veri çekme hatası: {e}")
 
     if matches:
-        return ["📌 *Özel Takip Listesi Anlık Durum:*\n" + "\n".join(matches)]
+        return ["📌 *Özel Takip Listesi Anlık Fiyatlar (15 Dk Trend):*\n" + "\n".join(matches)]
     return []
 
 def get_all_bist_tickers():
@@ -254,7 +266,7 @@ if __name__ == "__main__":
     all_results = special_results + technical_results + kap_results
 
     if all_results:
-        final_message = "🔔 *Saatlik BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
+        final_message = "🔔 *BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
     else:
         final_message = "ℹ️ *BIST & KAP Taraması Tamamlandı*\nBu taramada belirlenen kriterlere uyan teknik hisse sinyali veya önemli KAP haberi bulunamadı."
 
