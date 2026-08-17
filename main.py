@@ -205,9 +205,9 @@ if __name__ == "__main__":
 
     all_results = technical_results + kap_results
 
+    # Sadece kriterlere uyan hisse/haber varsa mesaj at, yoksa sessiz kal
     if all_results:
-        final_message = "\n\n---\n\n".join(all_results)
+        final_message = "🔔 *Saatlik BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
+        send_telegram_message(final_message)
     else:
-        final_message = "ℹ️ Bu taramada kriterlere uyan teknik hisse sinyali veya kritik KAP haberi bulunamadı."
-
-    send_telegram_message(final_message)
+        print("Kriterlere uyan hisse veya KAP haberi bulunamadı. Telegram'a mesaj atılmadı.")
