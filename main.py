@@ -83,28 +83,36 @@ def check_bist_stocks():
 
             symbol = ticker.replace(".IS", "")
 
-            # 1. Strateji: Zirveden Düşüş + RSI Dip
+            # 1. STRATEJİ: Zirveden Düşüş + RSI Dip
             if -35 <= drawdown <= -20 and last_rsi <= 35:
                 drawdown_matches.append(
                     f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
                 )
 
-            # 2. Strateji: Gün İçi Dipten Dönüş
-            today = df_stock.iloc[-1]
-            open_p, high_p, low_p, close_p = today['Open'], today['High'], today['Low'], today['Close']
-            vol_today = today['Volume']
+            # 2. STRATEJİ: Son 3-4 Günde Dipten Yönünü Yukarı Çevirenler
+            # Son 4 günün kapanış fiyatları
+            recent_closes = close_series.tail(4).values
+            # Son 4 günün hacim bilgisi ve 20 günlük ortalama hacim
+            recent_volumes = df_stock['Volume'].tail(4).values
             avg_vol = df_stock['Volume'].tail(20).mean()
 
-            day_range = high_p - low_p
-            if day_range > 0:
-                lower_tail = min(open_p, close_p) - low_p
-                tail_ratio = lower_tail / day_range
-                reversal_pct = ((close_p - low_p) / low_p) * 100
+            # Koşul A: Son 4 günde en az %3 net primlenme yapmış mı?
+            four_day_return = ((recent_closes[-1] - recent_closes[0]) / recent_closes[0]) * 100
+            
+            # Koşul B: Son 4 günün en az 3'ünde gün kapanışı pozitif mi (yeşil mum)?
+            green_days = sum(1 for i in range(1, len(recent_closes)) if recent_closes[i] > recent_closes[i-1])
+            
+            # Koşul C: Hacim artışı var mı? (Son günün hacmi ortalama hacimden yüksek mi?)
+            volume_confirmed = recent_volumes[-1] > avg_vol
 
-                if tail_ratio >= 0.55 and reversal_pct >= 2.5 and vol_today > avg_vol:
-                    reversal_matches.append(
-                        f"⚡ *{symbol}*: Dipten %{reversal_pct:.1f} Sıçradı ({close_p:.2f} TL)"
-                    )
+            # Koşul D: Fiyat EMA5'in üzerine çıktı mı?
+            ema5 = close_series.ewm(span=5, adjust=False).mean().iloc[-1]
+            above_ema5 = last_price > ema5
+
+            if four_day_return >= 3.0 and green_days >= 2 and volume_confirmed and above_ema5:
+                reversal_matches.append(
+                    f"🚀 *{symbol}*: Son 4 Günde %{four_day_return:.1f} Yükseliş Başlattı (Hacim Destekli, {last_price:.2f} TL)"
+                )
 
         except Exception:
             continue
@@ -113,7 +121,7 @@ def check_bist_stocks():
     if drawdown_matches:
         message_parts.append("🎯 *Zirveden Ucuzlayan + RSI Dip Yapanlar:*\n" + "\n".join(drawdown_matches))
     if reversal_matches:
-        message_parts.append("⚡ *Gün İçi Dipten Dönüş Yapanlar:*\n" + "\n".join(reversal_matches))
+        message_parts.append("🚀 *Dipten Yönünü Yukarı Çevirenler (Son 3-4 Gün Yükseliş Trendi):*\n" + "\n".join(reversal_matches))
 
     return message_parts
 
@@ -155,7 +163,6 @@ if __name__ == "__main__":
 
     all_results = technical_results + kap_results
 
-    # Sadece belirlenen kriterlere uyan hisse veya KAP haberi varsa Telegram'a mesaj gönderir
     if all_results:
         final_message = "🔔 *Saatlik BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
         send_telegram_message(final_message)
