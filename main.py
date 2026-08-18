@@ -103,13 +103,12 @@ def check_bist_stocks():
     drawdown_matches = []
     reversal_matches = []
 
-    # Yahoo kısıtlamasına takılmamak için 30'arlı paketler halinde veri çekme
     chunk_size = 30
     for i in range(0, len(bist_tickers), chunk_size):
         chunk = bist_tickers[i:i + chunk_size]
         try:
             data = yf.download(chunk, period="6m", interval="1d", group_by='ticker', threads=False, progress=False)
-            time.sleep(0.5)  # İki paket arası kısa es
+            time.sleep(0.5)
         except Exception as e:
             print(f"Veri indirme hatası (Chunk {i}): {e}")
             continue
@@ -133,24 +132,19 @@ def check_bist_stocks():
 
                 symbol = ticker.replace(".IS", "")
 
-                # 1. STRATEJİ: Zirveden Ucuzlayan + RSI Dip Yapanlar (-%15 veya daha fazla düşmüş, RSI <= 40)
-                if drawdown <= -15.0 and last_rsi <= 40.0:
+                # 1. STRATEJİ: Zirveden Ucuzlayan + RSI Dip Yapanlar (RSI <= 45 Esnetildi)
+                if drawdown <= -15.0 and last_rsi <= 45.0:
                     drawdown_matches.append(
                         f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
                     )
 
-                # 2. STRATEJİ: Son 3 Günde Düşüp Yönünü Yukarı Çevirenler
-                # Son 4 günün kapanış verileri alınır (Gözlem: Düşüş sonrası son günün yeşil/artı kapatması)
+                # 2. STRATEJİ: Son Düşüş Sonrası Yönünü Yukarı Çevirenler (%1.0 Sıçrama Esnetildi)
                 recent_closes = close_series.tail(4).values
-                
-                # Koşul A: İlk 3 gün düşüş eğilimi (Closes[0] > Closes[2])
                 three_day_drop = recent_closes[2] < recent_closes[0]
-                
-                # Koşul B: Son gün belirgin yükseliş başlangıcı (Closes[3] > Closes[2])
                 last_day_bounce = recent_closes[3] > recent_closes[2]
                 bounce_pct = ((recent_closes[3] - recent_closes[2]) / recent_closes[2]) * 100
 
-                if three_day_drop and last_day_bounce and bounce_pct >= 1.5:
+                if three_day_drop and last_day_bounce and bounce_pct >= 1.0:
                     reversal_matches.append(
                         f"⚡ *{symbol}*: Dipten %{bounce_pct:.1f} Sıçradı ({last_price:.2f} TL)"
                     )
@@ -166,12 +160,47 @@ def check_bist_stocks():
 
     return message_parts
 
+def check_kap_news():
+    url = "https://www.kap.org.tr/tr/api/disclosures"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    positive_keywords = ["Yeni İş İlişkisi", "İhale", "Yatırım", "Pay Alım Satım", "Sermaye Artırımı", "Geri Alım"]
+    kap_matches = []
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200 and response.text.startswith('['):
+            disclosures = response.json()
+            for item in disclosures[:20]:
+                title = str(item.get("title") or "")
+                summary = str(item.get("summary") or "")
+                stock_code = item.get("stockCodes", "BIST")
+                disclosure_id = item.get("disclosureIndex", "")
+
+                text_to_check = (title + " " + summary).lower()
+                if any(kw.lower() in text_to_check for kw in positive_keywords):
+                    link = f"https://www.kap.org.tr/tr/Bildirim/{disclosure_id}"
+                    clean_summary = summary.replace("\n", " ")[:100]
+                    kap_matches.append(
+                        f"📢 *[{stock_code}] {title}*\n{clean_summary}...\n🔗 [KAP Haberi]({link})"
+                    )
+    except Exception as e:
+        print(f"KAP tarama hatası: {e}")
+
+    if kap_matches:
+        return ["🚨 *Önemli KAP Bildirimleri:*\n" + "\n\n".join(kap_matches)]
+    return []
+
 if __name__ == "__main__":
     technical_results = check_bist_stocks()
+    kap_results = check_kap_news()
 
-    if technical_results:
-        final_message = "\n\n---\n\n".join(technical_results)
+    all_results = technical_results + kap_results
+
+    if all_results:
+        final_message = "\n\n---\n\n".join(all_results)
     else:
-        final_message = "ℹ️ *BIST Taraması Tamamlandı*\nBu taramada belirlenen kriterlere uyan teknik hisse sinyali bulunamadı."
+        final_message = "ℹ️ *BIST & KAP Taraması Tamamlandı*\nBu taramada belirlenen kriterlere uyan teknik hisse sinyali veya önemli KAP haberi bulunamadı."
 
     send_telegram_message(final_message)
