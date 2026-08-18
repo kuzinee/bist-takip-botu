@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import yfinance as yf
 import pandas as pd
@@ -99,13 +100,14 @@ def check_bist_stocks():
 
     drawdown_matches = []
     reversal_matches = []
+    scanned_count = 0
 
-    # Yahoo Finance engelini aşmak için 50'şerli gruplar halinde veri çekme
-    chunk_size = 50
+    chunk_size = 40
     for i in range(0, len(bist_tickers), chunk_size):
         chunk = bist_tickers[i:i + chunk_size]
         try:
-            data = yf.download(chunk, period="6m", interval="1d", group_by='ticker', threads=True, progress=False)
+            data = yf.download(chunk, period="6m", interval="1d", group_by='ticker', threads=False, progress=False)
+            time.sleep(1) # Yahoo IP engelini aşmak için bekleme süresi
         except Exception as e:
             print(f"Veri indirme hatası (Chunk {i}): {e}")
             continue
@@ -116,9 +118,10 @@ def check_bist_stocks():
                     continue
 
                 df_stock = data[ticker].dropna()
-                if len(df_stock) < 30:
+                if len(df_stock) < 20:
                     continue
 
+                scanned_count += 1
                 close_series = df_stock["Close"]
                 last_price = float(close_series.iloc[-1])
                 peak_price = float(close_series.max())
@@ -129,13 +132,13 @@ def check_bist_stocks():
 
                 symbol = ticker.replace(".IS", "")
 
-                # 1. STRATEJİ: Zirveden Düşüş (-%20 veya üzeri) + RSI Dip (<=40)
-                if drawdown <= -20.0 and last_rsi <= 40.0:
+                # 1. STRATEJİ: Zirveden %15 ve Üzeri Düşenler + RSI <= 45
+                if drawdown <= -15.0 and last_rsi <= 45.0:
                     drawdown_matches.append(
                         f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
                     )
 
-                # 2. STRATEJİ: Gün İçi Dipten Dönüş Yapanlar
+                # 2. STRATEJİ: Dipten Yönünü Yukarı Çevirenler
                 recent_closes = close_series.tail(4).values
                 recent_volumes = df_stock['Volume'].tail(4).values
                 avg_vol = df_stock['Volume'].tail(20).mean()
@@ -146,7 +149,7 @@ def check_bist_stocks():
                 ema5 = float(close_series.ewm(span=5, adjust=False).mean().iloc[-1])
                 above_ema5 = last_price > ema5
 
-                if four_day_return >= 3.0 and green_days >= 2 and volume_confirmed and above_ema5:
+                if four_day_return >= 2.5 and green_days >= 2 and volume_confirmed and above_ema5:
                     reversal_matches.append(
                         f"⚡ *{symbol}*: Dipten %{four_day_return:.1f} Sıçradı ({last_price:.2f} TL)"
                     )
@@ -154,6 +157,8 @@ def check_bist_stocks():
             except Exception:
                 continue
 
+    print(f"Başarıyla taranan hisse sayısı: {scanned_count}")
+    
     message_parts = []
     if drawdown_matches:
         message_parts.append("🎯 *Zirveden Ucuzlayan + RSI Dip Yapanlar:*\n" + "\n".join(drawdown_matches))
