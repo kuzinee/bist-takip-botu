@@ -3,15 +3,6 @@ import requests
 import yfinance as yf
 import pandas as pd
 
-# ==============================================================================
-# 📌 ÖZEL TAKİP LİSTENİZ (15 DAKİKADA BİR ANLIK FİYATI VE YÖNÜ BİLDİRİLECEK HİSSELER)
-# Hisse kodlarının sonuna ".IS" ekleyerek yazabilirsiniz.
-# ==============================================================================
-SPECIAL_WATCHLIST = [
-    "MIATK.IS",
-    "ARDYZ.IS"
-]
-
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
@@ -36,62 +27,6 @@ def send_telegram_message(message):
             print("Telegram bildirimi gönderildi.")
         except Exception as e:
             print(f"Telegram hatası: {e}")
-
-def check_special_watchlist():
-    if not SPECIAL_WATCHLIST:
-        return []
-    
-    print("Özel takip listesindeki hisselerin 15 dakikalık fiyatları çekiliyor...")
-    matches = []
-    
-    for ticker in SPECIAL_WATCHLIST:
-        try:
-            symbol = ticker.replace(".IS", "")
-            stock = yf.Ticker(ticker)
-            
-            # 15 dakikalık verileri çekip zamana göre sıralıyoruz
-            df_stock = stock.history(period="2d", interval="15m")
-            if not df_stock.empty:
-                df_stock = df_stock.sort_index() # Zaman sıralamasını garantiye alıyoruz
-            
-            if len(df_stock) < 2:
-                df_stock = stock.history(period="5d", interval="1m")
-                if not df_stock.empty:
-                    df_stock = df_stock.sort_index()
-
-            if df_stock.empty or len(df_stock) < 2:
-                print(f"Uyarı: {ticker} için yeterli veri alınamadı.")
-                continue
-
-            last_price = float(df_stock["Close"].iloc[-1])
-            prev_price = float(df_stock["Close"].iloc[-2])
-
-            # Fiyat Değişim Yönü Mantığı
-            if last_price > prev_price:
-                trend_icon = "🟢 🔼"
-            elif last_price < prev_price:
-                trend_icon = "🔴 🔽"
-            else:
-                trend_icon = "⚪ ➖"
-
-            # Günlük Kapanışa Göre Yüzde Değişimi
-            daily_data = stock.history(period="2d")
-            if len(daily_data) >= 2:
-                prev_close = daily_data["Close"].iloc[-2]
-                change_pct = ((last_price - prev_close) / prev_close) * 100
-                change_str = f" (%{change_pct:+.2f})"
-            else:
-                change_str = ""
-
-            matches.append(f"• *{symbol}* {trend_icon}: {last_price:.2f} TL{change_str}")
-            
-        except Exception as e:
-            print(f"{ticker} fiyatı çekilirken hata oluştu: {e}")
-            continue
-
-    if matches:
-        return ["📌 *Özel Takip Listesi Anlık Fiyatlar (15 Dk Trend):*\n" + "\n".join(matches)]
-    return []
 
 def get_all_bist_tickers():
     # Borsa İstanbul Tüm Hisseler (500+ Hisse Tam Liste)
@@ -198,12 +133,11 @@ def check_bist_stocks():
                     f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
                 )
 
-            # 2. STRATEJİ: Son 3-4 Günde Dipten Yönünü Yukarı Çevirenler
+            # 2. STRATEJİ: Gün İçi Dipten Dönüş Yapanlar
             recent_closes = close_series.tail(4).values
             recent_volumes = df_stock['Volume'].tail(4).values
             avg_vol = df_stock['Volume'].tail(20).mean()
 
-            # Koşullar: %3+ prim, yeşil gün çoğunluğu, hacim teyidi ve EMA5 kırılımı
             four_day_return = ((recent_closes[-1] - recent_closes[0]) / recent_closes[0]) * 100
             green_days = sum(1 for i in range(1, len(recent_closes)) if recent_closes[i] > recent_closes[i-1])
             volume_confirmed = recent_volumes[-1] > avg_vol
@@ -212,7 +146,7 @@ def check_bist_stocks():
 
             if four_day_return >= 3.0 and green_days >= 2 and volume_confirmed and above_ema5:
                 reversal_matches.append(
-                    f"🚀 *{symbol}*: Son 4 Günde %{four_day_return:.1f} Yükseliş Başlattı (Hacim Destekli, {last_price:.2f} TL)"
+                    f"⚡ *{symbol}*: Dipten %{four_day_return:.1f} Sıçradı ({last_price:.2f} TL)"
                 )
 
         except Exception:
@@ -222,7 +156,7 @@ def check_bist_stocks():
     if drawdown_matches:
         message_parts.append("🎯 *Zirveden Ucuzlayan + RSI Dip Yapanlar:*\n" + "\n".join(drawdown_matches))
     if reversal_matches:
-        message_parts.append("🚀 *Dipten Yönünü Yukarı Çevirenler (Son 3-4 Gün Yükseliş Trendi):*\n" + "\n".join(reversal_matches))
+        message_parts.append("⚡ *Gün İçi Dipten Dönüş Yapanlar:*\n" + "\n".join(reversal_matches))
 
     return message_parts
 
@@ -259,14 +193,13 @@ def check_kap_news():
     return []
 
 if __name__ == "__main__":
-    special_results = check_special_watchlist()
     technical_results = check_bist_stocks()
     kap_results = check_kap_news()
 
-    all_results = special_results + technical_results + kap_results
+    all_results = technical_results + kap_results
 
     if all_results:
-        final_message = "🔔 *BIST & KAP Taraması Sonuçları:*\n\n" + "\n\n---\n\n".join(all_results)
+        final_message = "\n\n---\n\n".join(all_results)
     else:
         final_message = "ℹ️ *BIST & KAP Taraması Tamamlandı*\nBu taramada belirlenen kriterlere uyan teknik hisse sinyali veya önemli KAP haberi bulunamadı."
 
