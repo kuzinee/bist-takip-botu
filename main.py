@@ -14,7 +14,6 @@ def send_telegram_message(message):
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     
-    # Telegram mesaj uzunluk sınırını (4096 karakter) aşmamak için bölme
     for i in range(0, len(message), 4000):
         chunk = message[i:i+4000]
         payload = {
@@ -30,7 +29,6 @@ def send_telegram_message(message):
             print(f"Telegram hatası: {e}")
 
 def get_all_bist_tickers():
-    # Borsa İstanbul Tüm Hisseler (500+ Hisse Tam Liste)
     return [
         "AAV.IS", "A1CAP.IS", "ABD.IS", "ACSEL.IS", "ADEL.IS", "ADESE.IS", "ADGYO.IS", "AEFES.IS", 
         "AFYON.IS", "AGESA.IS", "AGHOL.IS", "AGROT.IS", "AHGAZ.IS", "AKBNK.IS", "AKCNS.IS", "AKFGY.IS", 
@@ -102,6 +100,7 @@ def check_bist_stocks():
 
     drawdown_matches = []
     reversal_matches = []
+    early_alert_matches = []
 
     chunk_size = 30
     for i in range(0, len(bist_tickers), chunk_size):
@@ -119,11 +118,12 @@ def check_bist_stocks():
                     continue
 
                 df_stock = data[ticker].dropna()
-                if len(df_stock) < 30:
+                if len(df_stock) < 50: # EMA 50 için en az 50 gün veri olmalı
                     continue
 
                 close_series = df_stock["Close"]
                 last_price = float(close_series.iloc[-1])
+                prev_price = float(close_series.iloc[-2])
                 peak_price = float(close_series.max())
                 drawdown = ((last_price - peak_price) / peak_price) * 100
 
@@ -132,13 +132,13 @@ def check_bist_stocks():
 
                 symbol = ticker.replace(".IS", "")
 
-                # 1. STRATEJİ: Zirveden Ucuzlayan + RSI Dip Yapanlar (RSI <= 45 Esnetildi)
+                # 1. STRATEJİ: Zirveden Ucuzlayan + RSI Dip Yapanlar
                 if drawdown <= -15.0 and last_rsi <= 45.0:
                     drawdown_matches.append(
                         f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
                     )
 
-                # 2. STRATEJİ: Son Düşüş Sonrası Yönünü Yukarı Çevirenler (%1.0 Sıçrama Esnetildi)
+                # 2. STRATEJİ: Dipten Yönünü Yukarı Çevirenler
                 recent_closes = close_series.tail(4).values
                 three_day_drop = recent_closes[2] < recent_closes[0]
                 last_day_bounce = recent_closes[3] > recent_closes[2]
@@ -149,6 +149,34 @@ def check_bist_stocks():
                         f"⚡ *{symbol}*: Dipten %{bounce_pct:.1f} Sıçradı ({last_price:.2f} TL)"
                     )
 
+                # 3. ERKEN YAKALAMA STRATEJİSİ: Grafik Kontrolü İsteyen Hisseler
+                daily_return = ((last_price - prev_price) / prev_price) * 100
+                last_volume = float(df_stock['Volume'].iloc[-1])
+                avg_volume_20 = float(df_stock['Volume'].tail(20).mean())
+                
+                # A) Sessiz Hacim Patlaması: Fiyat sakin (-%1 ile +%3 arası) ama Hacim > 2.0x
+                volume_spike = (last_volume >= avg_volume_20 * 2.0) and (-1.0 <= daily_return <= 3.0)
+
+                # B) EMA 50 Yukarı Kırılımı (Düşen trendin bittiğinin ilk işareti)
+                ema50 = close_series.ewm(span=50, adjust=False).mean()
+                ema50_cross = (prev_price < ema50.iloc[-2]) and (last_price > ema50.iloc[-1])
+
+                # C) Sıkışma / Daralma (Son 10 günün en yüksek/en düşük farkı %5'ten az)
+                last_10_high = float(close_series.tail(10).max())
+                last_10_low = float(close_series.tail(10).min())
+                squeeze = ((last_10_high - last_10_low) / last_10_low) * 100 <= 5.0
+
+                if volume_spike or ema50_cross or squeeze:
+                    reasons = []
+                    if volume_spike: reasons.append("Hacim Patlaması (2x)")
+                    if ema50_cross: reasons.append("EMA50 Kırılımı")
+                    if squeeze: reasons.append("Fiyat Sıkışması")
+                    
+                    reason_str = ", ".join(reasons)
+                    early_alert_matches.append(
+                        f"🔍 *{symbol}*: {reason_str} ({last_price:.2f} TL)"
+                    )
+
             except Exception:
                 continue
 
@@ -157,6 +185,8 @@ def check_bist_stocks():
         message_parts.append("🎯 *Zirveden Ucuzlayan + RSI Dip Yapanlar:*\n" + "\n".join(drawdown_matches))
     if reversal_matches:
         message_parts.append("⚡ *Son 3 Gün Düşüp Yönünü Yukarı Çevirenler:*\n" + "\n".join(reversal_matches))
+    if early_alert_matches:
+        message_parts.append("🔍 *GRAFİK İNCELEME LİSTESİ (Erken Uyarı):*\n" + "\n".join(early_alert_matches))
 
     return message_parts
 
