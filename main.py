@@ -13,7 +13,6 @@ def send_telegram_message(message):
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     
-    # Telegram'ın 4096 karakter sınırına takılmamak için mesajı parçalara bölme
     for i in range(0, len(message), 4000):
         chunk = message[i:i+4000]
         payload = {
@@ -29,7 +28,6 @@ def send_telegram_message(message):
             print(f"Telegram hatası: {e}")
 
 def get_all_bist_tickers():
-    # Borsa İstanbul Tüm Hisseler (500+ Hisse Tam Liste)
     return [
         "AAV.IS", "A1CAP.IS", "ABD.IS", "ACSEL.IS", "ADEL.IS", "ADESE.IS", "ADGYO.IS", "AEFES.IS", 
         "AFYON.IS", "AGESA.IS", "AGHOL.IS", "AGROT.IS", "AHGAZ.IS", "AKBNK.IS", "AKCNS.IS", "AKFGY.IS", 
@@ -99,58 +97,62 @@ def check_bist_stocks():
     bist_tickers = get_all_bist_tickers()
     print(f"Toplam {len(bist_tickers)} hisse taranıyor...")
 
-    try:
-        data = yf.download(bist_tickers, period="6m", interval="1d", group_by='ticker', threads=True, progress=False)
-    except Exception as e:
-        print(f"Veri indirme hatası: {e}")
-        return []
-
     drawdown_matches = []
     reversal_matches = []
 
-    for ticker in bist_tickers:
+    # Yahoo Finance engelini aşmak için 50'şerli gruplar halinde veri çekme
+    chunk_size = 50
+    for i in range(0, len(bist_tickers), chunk_size):
+        chunk = bist_tickers[i:i + chunk_size]
         try:
-            if ticker not in data or data[ticker].empty:
-                continue
-
-            df_stock = data[ticker].dropna()
-            if len(df_stock) < 30:
-                continue
-
-            close_series = df_stock["Close"]
-            last_price = close_series.iloc[-1]
-            peak_price = close_series.max()
-            drawdown = ((last_price - peak_price) / peak_price) * 100
-
-            rsi_series = calculate_rsi(close_series)
-            last_rsi = rsi_series.iloc[-1]
-
-            symbol = ticker.replace(".IS", "")
-
-            # 1. STRATEJİ: Zirveden Düşüş + RSI Dip
-            if -35 <= drawdown <= -20 and last_rsi <= 35:
-                drawdown_matches.append(
-                    f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
-                )
-
-            # 2. STRATEJİ: Gün İçi Dipten Dönüş Yapanlar
-            recent_closes = close_series.tail(4).values
-            recent_volumes = df_stock['Volume'].tail(4).values
-            avg_vol = df_stock['Volume'].tail(20).mean()
-
-            four_day_return = ((recent_closes[-1] - recent_closes[0]) / recent_closes[0]) * 100
-            green_days = sum(1 for i in range(1, len(recent_closes)) if recent_closes[i] > recent_closes[i-1])
-            volume_confirmed = recent_volumes[-1] > avg_vol
-            ema5 = close_series.ewm(span=5, adjust=False).mean().iloc[-1]
-            above_ema5 = last_price > ema5
-
-            if four_day_return >= 3.0 and green_days >= 2 and volume_confirmed and above_ema5:
-                reversal_matches.append(
-                    f"⚡ *{symbol}*: Dipten %{four_day_return:.1f} Sıçradı ({last_price:.2f} TL)"
-                )
-
-        except Exception:
+            data = yf.download(chunk, period="6m", interval="1d", group_by='ticker', threads=True, progress=False)
+        except Exception as e:
+            print(f"Veri indirme hatası (Chunk {i}): {e}")
             continue
+
+        for ticker in chunk:
+            try:
+                if ticker not in data or data[ticker].empty:
+                    continue
+
+                df_stock = data[ticker].dropna()
+                if len(df_stock) < 30:
+                    continue
+
+                close_series = df_stock["Close"]
+                last_price = float(close_series.iloc[-1])
+                peak_price = float(close_series.max())
+                drawdown = ((last_price - peak_price) / peak_price) * 100
+
+                rsi_series = calculate_rsi(close_series)
+                last_rsi = float(rsi_series.iloc[-1])
+
+                symbol = ticker.replace(".IS", "")
+
+                # 1. STRATEJİ: Zirveden Düşüş (-%20 veya üzeri) + RSI Dip (<=40)
+                if drawdown <= -20.0 and last_rsi <= 40.0:
+                    drawdown_matches.append(
+                        f"• *{symbol}*: Zirveden %{drawdown:.1f} | RSI: {last_rsi:.1f} ({last_price:.2f} TL)"
+                    )
+
+                # 2. STRATEJİ: Gün İçi Dipten Dönüş Yapanlar
+                recent_closes = close_series.tail(4).values
+                recent_volumes = df_stock['Volume'].tail(4).values
+                avg_vol = df_stock['Volume'].tail(20).mean()
+
+                four_day_return = ((recent_closes[-1] - recent_closes[0]) / recent_closes[0]) * 100
+                green_days = sum(1 for j in range(1, len(recent_closes)) if recent_closes[j] > recent_closes[j-1])
+                volume_confirmed = recent_volumes[-1] > avg_vol
+                ema5 = float(close_series.ewm(span=5, adjust=False).mean().iloc[-1])
+                above_ema5 = last_price > ema5
+
+                if four_day_return >= 3.0 and green_days >= 2 and volume_confirmed and above_ema5:
+                    reversal_matches.append(
+                        f"⚡ *{symbol}*: Dipten %{four_day_return:.1f} Sıçradı ({last_price:.2f} TL)"
+                    )
+
+            except Exception:
+                continue
 
     message_parts = []
     if drawdown_matches:
